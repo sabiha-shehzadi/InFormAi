@@ -25,35 +25,45 @@ if uploaded_file:
     st.success("✅ File uploaded successfully!")
     st.write("Detected columns:", list(df.columns))
 
-    # Static owner email
-    owner_email = "owner@gmail.com"  # 👈 replace with your owner email
+    # --- Owner Email ---
+    owner_email = "owner@gmail.com"  # 👈 change this to your actual owner email
 
-    # Get colleague list and credentials
+    # --- Collect Colleague Details ---
     colleagues = st.text_area("Colleagues' emails (comma-separated)")
-    sender_email = st.text_input("Sender Gmail address (same as owner)")
+    sender_email = st.text_input("Sender Gmail address (should match owner email)")
     sender_password = st.text_input("App Password", type="password")
 
-    # Prepare file saving
+    # --- Save Blank Form Template ---
     os.makedirs("data/forms", exist_ok=True)
     os.makedirs("data/responses", exist_ok=True)
 
     form_name = uploaded_file.name.split('.')[0]
-    form_name = form_name.strip().replace(" ", "_").lower()  # clean filename
+    form_name = form_name.strip().replace(" ", "_").lower()
 
-    # Save blank form template
-    df.head(0).to_csv(f"data/forms/{form_name}.csv", index=False)
+    form_template_path = f"data/forms/{form_name}.csv"
+    df.head(0).to_csv(form_template_path, index=False)
+
+    st.info(f"📋 Form template saved: `{form_template_path}`")
 
     # --- Send Email with Form Link ---
     if st.button("✉️ Send Form Link"):
         subject = f"Please fill out the form '{form_name}'"
-        form_link = f"http://localhost:8501/Form?form={form_name}"  # local link
+
+        # --- Use dynamic app URL (for deployment on Streamlit Cloud) ---
+        if "streamlit_app_url" in st.secrets:
+            base_url = st.secrets["streamlit_app_url"]
+        else:
+            base_url = "http://localhost:8501"  # fallback for local testing
+
+        form_link = f"{base_url}/Form?form={form_name}"
 
         body = f"""
 Hello,
 
 You've been invited to fill out the form: **{form_name}**
 
-👉 Click here to fill the form: {form_link}
+👉 Click here to fill the form:
+{form_link}
 
 Thank you,
 {owner_email}
@@ -73,11 +83,12 @@ Thank you,
                     server.sendmail(sender_email, email, msg.as_string())
                     st.write(f"✅ Sent to {email}")
 
-            st.success("All emails sent successfully!")
+            st.success("📨 All emails sent successfully!")
+            st.info("Colleagues will only see the form — not your dashboard.")
         except Exception as e:
             st.error(f"❌ Error sending emails: {e}")
 
-# --- Owner can always view responses ---
+# --- Owner Can View All Responses ---
 st.subheader("📊 View All Responses")
 
 response_files = [f for f in os.listdir("data/responses") if f.endswith("_responses.csv")]
